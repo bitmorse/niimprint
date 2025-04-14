@@ -78,3 +78,95 @@ python niimprint -c bluetooth -a "E2:E1:08:03:09:87" -r 90 -i examples/B21_80x50
 ## Licence
 
 [MIT](https://choosealicense.com/licenses/mit/). Originally developed by [kjy00302](https://github.com/kjy00302), forked & enhanced by [AndBondStyle](https://github.com/AndBondStyle)
+
+
+
+# Niimbot B18 Integration Guide on Raspberry Pi CM4
+
+## Bluetooth Pairing Process
+
+1. **Scan for devices**:
+   ```bash
+   bluetoothctl scan on
+   ```
+
+2. **Identify the printer addresses**:
+   The Niimbot B18 will appear with two different Bluetooth addresses (for example: `07:03:09:87:F3:D2` and `09:07:03:87:F3:D2`). The addresses share the same last 3 bytes but have different first 3 bytes.
+
+3. **Check each address**:
+   ```bash
+   bluetoothctl info 07:03:09:87:F3:D2
+   bluetoothctl info 09:07:03:87:F3:D2
+   ```
+   Use the address that shows "UUID: Serial Port" in its services.
+
+4. **Pair with the correct address**:
+   ```bash
+   bluetoothctl pair XX:XX:XX:XX:XX:XX
+   ```
+
+5. **Trust the device**:
+   ```bash
+   bluetoothctl trust XX:XX:XX:XX:XX:XX
+   ```
+
+6. **Connect to the device**:
+   ```bash
+   bluetoothctl connect XX:XX:XX:XX:XX:XX
+   ```
+
+7. **Verify connection**:
+   ```bash
+   bluetoothctl info XX:XX:XX:XX:XX:XX
+   ```
+   Check that "Connected: yes" appears in the output.
+
+
+## Printing via Command Line
+```bash
+python niimprint -m b18 -c bluetooth -a "XX:XX:XX:XX:XX:XX" -r 90 -d 3 -i your_image.png
+```
+
+Notes:
+- B18 only supports density up to 3
+- Maximum width: 50mm (384 pixels at 8px/mm)
+- Common label sizes: 30×15mm, 40×20mm, 50×12mm, 50×30mm
+
+## Deployment with PM2
+
+1. **Install PM2**:
+   ```bash
+   sudo apt install nodejs npm
+   sudo npm install -g pm2
+   ```
+
+2. **Start the FastAPI service with PM2**:
+   ```bash
+   cd /path/to/niimprint
+   pm2 start print_service.py --name "niimprint-api" --interpreter=/path/to/venv/bin/python
+   ```
+
+3. **Set up automatic startup on boot**:
+   ```bash
+   pm2 startup
+   # Run the command it outputs
+   pm2 save
+   ```
+
+4. **Useful PM2 commands**:
+   ```bash
+   pm2 status                    # Check status of all processes
+   pm2 logs niimprint-api        # View logs
+   pm2 restart niimprint-api     # Restart the service
+   pm2 stop niimprint-api        # Stop the service
+   pm2 delete niimprint-api      # Remove from PM2
+   pm2 monit                     # Monitor CPU/Memory usage
+   ```
+
+## API Usage Example
+```bash
+curl -X POST "http://localhost:8000/print" \
+  -H "Content-Type: application/json" \
+  -d '{"image_url": "https://example.com/label.png", "rotation": 90, "density": 3}'
+```
+```
